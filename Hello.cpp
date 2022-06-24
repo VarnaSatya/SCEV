@@ -19,6 +19,9 @@
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/Analysis/LoopAnalysisManager.h"
+#include "llvm/Analysis/ScalarEvolutionExpressions.h"
+
 #include <list>
 #include <map>
 using namespace llvm;
@@ -152,9 +155,10 @@ namespace {
     // We don't modify the program, so we preserve all analyses.
     void getAnalysisUsage(AnalysisUsage &AU) const override 
     {
-      AU.setPreservesAll();      
-      //auto *SE = getAnalysisIfAvailable<LoopStandardAnalysisResults>();
-      //AU.addRequiredTransitive<LoopStandardAnalysisResults>();
+      //AU.setPreservesAll();      
+      auto *SE = getAnalysisIfAvailable<ScalarEvolutionWrapperPass>();
+      //AU.addRequired<LoopStandardAnalysisResults>();
+      AU.addRequired<ScalarEvolutionWrapperPass>();
     }
     /*bool runOnLoop(Loop *L, LPPassManager &LPM) override 
     {
