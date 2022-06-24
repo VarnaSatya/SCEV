@@ -18,11 +18,15 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/IRBuilder.h"
 #include <list>
 #include <map>
 using namespace llvm;
 
 #define DEBUG_TYPE "hello"
+
+static LLVMContext Context;
+
 
 STATISTIC(HelloCounter, "Counts number of functions greeted");
 
@@ -51,6 +55,7 @@ namespace {
     Hello2() : FunctionPass(ID) {}
 
     bool runOnFunction(Function &F) override {
+      Module *M=F.getParent();
       ++HelloCounter;
       //errs() << "Hello: ";
       //errs().write_escaped(F.getName()) << '\n';
@@ -60,7 +65,7 @@ namespace {
       //auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
       std::list<Instruction*> instrList;
       std::map<int, std::list<Instruction*> > assgnInstrs;
-
+      IRBuilder<> IR(M->getContext());
       for (BasicBlock &BB : F)
       {
         //errs() << "\nBasic block (name=" << BB.getName() << ") has "<< BB.size() << " instructions.\nPredecessors:\n";
@@ -147,10 +152,14 @@ namespace {
     // We don't modify the program, so we preserve all analyses.
     void getAnalysisUsage(AnalysisUsage &AU) const override 
     {
-      AU.setPreservesAll();
-      //auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-      //AU.addRequiredTransitive<ScalarEvolutionWrapperPass>();
+      AU.setPreservesAll();      
+      //auto *SE = getAnalysisIfAvailable<LoopStandardAnalysisResults>();
+      //AU.addRequiredTransitive<LoopStandardAnalysisResults>();
     }
+    /*bool runOnLoop(Loop *L, LPPassManager &LPM) override 
+    {
+      auto *SE = getAnalysisIfAvailable<ScalarEvolutionWrapperPass>();
+    }*/
   };
 }
 
