@@ -149,8 +149,8 @@ namespace {
     void getAnalysisUsage(AnalysisUsage &AU) const override 
     {
       AU.setPreservesAll();
-      auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-      AU.addRequiredTransitive<ScalarEvolutionWrapperPass>();
+      //auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+      //AU.addRequiredTransitive<ScalarEvolutionWrapperPass>();
     }
   };
 }
