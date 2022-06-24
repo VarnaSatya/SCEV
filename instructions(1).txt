@@ -1,0 +1,66 @@
+ Here is a part of the test case 
+
+
+void print(int *A) {}
+
+c = 10;
+for(int i = 0; i < n; i += 4) {
+  A[i+2] = c+i+2;
+  A[i+1] = c+i+1;
+  A[i+3] = c+i+3;
+  A[i] = c+i;
+}
+
+print(A);
+
+
+
+This code is simd vectorized if the array accesses are in order. That is 0/1/2/3. 
+
+1. Understand the SCEV
+
+2. For the above access pattern , identify that the accesses are not in required order using SCEV .
+
+3.Rearrange the code to make the access in required order.
+ 
+Before implementing it , try to understand the SCEV emitted from scalar evolution
+ 1. emit-llvm 
+clang -S -emit-llvm test.c -Xclang -disable-O0-optnone
+
+
+2. Transform to enable SCEV analysis
+
+
+opt -mem2reg -loop-simplify -instcombine -instnamer -indvars test.ll -S -o out.ll
+
+
+3. Dump scev
+
+//opt -analyze -scalar-evolution -enable-new-pm=0 out.ll
+
+opt < out.ll -passes='require<scalar-evolution>,invalidate<domtree>,print<scalar-evolution>'
+
+opt -load ${LLVM_HOME}/build/lib/LLVMHello.so -hello test.ll >/dev/null --enable-new-pm=0 
+
+
+
+ write the logic in hello2 class
+Assign the scalar evolution object inside your class 
+
+auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+ in the getAnalysisUsage() 
+
+AU.addRequiredTransitive<ScalarEvolutionWrapperPass>();
+ Identify the store / load instructions using dyn_cast
+
+For the store/load instructions 
+
+Use store->getPointerOperand() to get the store pointer
+Similarly for load
+Pass this to SE.getSCEV() to get the SCEV 
+
+Passing the obtained SCEV using SE.getPointerBase(SCEV) will give the base pointer
+
+Then you can subtract the SCEV and SCEV base to get the required value 
+
+SE.getMinusSCEV()

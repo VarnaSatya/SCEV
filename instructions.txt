@@ -1,0 +1,91 @@
+1. login to server by this ssh ccommand
+ssh varna@compilertree.mooo.com -p 1037
+
+2. From there login to work machine using this command
+ssh 192.168.0.5
+
+Both these machines have password same as username.
+
+Compiler build :
+
+1. Add these lines to ~/.bashrc
+export LLVM_HOME=/data/varna/llvm
+export PATH=${LLVM_HOME}/install/bin:${PATH}
+export LD_LIBRARY_PATH=${LLVM_HOME}/install/lib:${LD_LIBRARY_PATH}
+export LIBRARY_PATH=${LLVM_HOME}/install/lib:${LIBRARY_PATH}
+
+2. Source the bahsrc first time.
+$ . ~/.bashrc
+
+5. One time activity
+ $ mkdir ${LLVM_HOME}
+ $ cd ${LLVM_HOME}
+ $ mkdir build install
+
+4. git clone --depth 1 https://github.com/llvm/llvm-project.git 
+
+5. cd build
+
+6. cmake -G "Ninja" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE="Debug" -DLLVM_TARGETS_TO_BUILD="host" -DBUILD_SHARED_LIBS=1 -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_CXX_FLAGS=" -ggdb3 -gdwarf-4 "  ../llvm-project/llvm 
+
+7. ninja install 
+
+----------------------
+These step should make you build the compiler. 
+try "which clang"/ "which opt" to ascertain the built compiler.
+
+8. make sure that change does rebuild the compiler
+  $ touch ${LLVM_HOME}/llvm-project/llvm/lib/Transforms/Hello/Hello.cpp
+  $ ninja install 
+
+9. mkdir ${LLVM_HOME}/test
+
+10. cd ${LLVM_HOME}/test
+
+11. Create a C file with following content. Let us call the file 1.c.
+int max(int x, int y) {
+  int k;
+  if (x > y) k=x;
+  else  k = y;
+  return k;
+}
+
+12. $ clang -S -emit-llvm 1.c  . This command generates bitcode file. what is the name of bitcode file? Let it be 1.ll
+
+13. $ opt -load ${LLVM_HOME}/build/lib/LLVMHello.so -hello 1.ll >/dev/null --enable-new-pm=0    // you 
+have run hello pass on your input file. For more read
+https://llvm.org/docs/WritingAnLLVMPass.html#running-a-pass-with-opt
+
+14. Now add code in the Hello.cpp mentioned above to count the number of 
+instructions in a function. Similar code can be seen in 
+https://llvm.org/docs/ProgrammersManual.html#basic-inspection-and-traversal-routines
+
+Build the compiler again and execute 13.
+
+15. Warm up excercises : 1. Count the number of instructions in a function.
+                  2. Count the number of basic block in a function.
+                  3. Find the basic block with maximum instructions.
+                  4. Find the basic block with maximum successors.
+                  5. Find the basic block with maximum predecessors.
+
+16. How to browse the source code?
+$ cd ${LLVM_HOME}/llvm-project/llvm
+$ find . -name "*.cpp" -print > filenames
+$ find . -name "*.h" -print >> filenames
+$ ctags -L filenames
+$ cscope -i filenames
+
+17. how does ctags work?
+On a identifier if you press Ctrl-] together, you should reach definition. If 
+multiple definitions, better to use g before Ctrl-]. Crrl-t gets you back you 
+were. This works like a stack as you can keep browsing source code. ctags+cscope 
+is good tool to browse code.
+
+18. Next excercise is to add a global variable to compiled program using Hello pass.
+One is expected to use IRBuilder class and store zero to the new global variable
+in entry block. The following link might help..
+https://stackoverflow.com/questions/7787308/how-can-i-declare-a-global-variable-in-llvm
+
+Reference : LLVM essentials book (beware that the book is outdated). 
+
+19. Next excercise is store to different sequential numbers from 1 to all other blocks.
