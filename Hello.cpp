@@ -114,10 +114,11 @@ namespace {
         {          
           //errs() << '\t' << itr->first << '\t' << *itr->second.front() << '\n';
           key=itr->first;
-
+          errs() << "\nkey: " << key <<"\n";
           if(key==0)
           {  
             prev=itr->second.back();
+            errs() << *prev << "\n";
             continue;
           }
           else
@@ -127,16 +128,14 @@ namespace {
 
             for(const auto& line : itr->second)
             {
-              errs() << *line << "\n";
-              line->insertAfter(prev);
+              //errs() <<"PREV:" <<*prev <<"\n";
+              errs() << *line <<"\n";
+              //line->removeFromParent();
+              line->moveAfter(prev);
               prev=line;
-            }
+              //break;
+              //errs() << *prev << "\n";
 
-            //for (it = itr->second.front(); it != itr->second.back(); ++it)
-            {
-              //errs()<<"\n"<<it;
-              //it->first->insertAfter(prev);
-              //prev=it;
             }
           }
           
