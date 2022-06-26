@@ -60,6 +60,9 @@ namespace {
     bool runOnFunction(Function &F) override {
       Module *M=F.getParent();
       ++HelloCounter;
+      
+      auto *SE = getAnalysisIfAvailable<ScalarEvolutionWrapperPass>();
+      SE->getSE();
       //errs() << "Hello: ";
       //errs().write_escaped(F.getName()) << '\n';
       //Module *M=F.getParent();
@@ -81,32 +84,43 @@ namespace {
             //errs()<<"\nInstructions:\n"<<I;
             Value *instruction= &I;
 
-            instrList.push_back(&I);
-            //errs() << "\nOpernads number:"<<I.getNumOperands();
+            //errs() << SE->getSE()<<"\n";
+
+             //errs() << "\nOpernads number:"<<I.getNumOperands();
             if (auto *AI = dyn_cast<LoadInst>(instruction)) 
             {
-              //errs() << "\nLoad Instrction:"<<&AI<<I;             
+              //errs() << "\nLoad Instrction:"<<&AI<<I;
+              //instrList.push_back(AI->getPointerOperand()); 
+              instrList.push_back(&I);            
             }
-            if (I.getNumOperands()==2)
+            else if (auto *AI = dyn_cast<StoreInst>(instruction)) 
             {
-              if (ConstantInt* CI = dyn_cast<ConstantInt>(I.getOperand(1))) 
-              {
-                  if (CI->getBitWidth() <= 32) 
-                  {
-                    int constIntValue = CI->getSExtValue();
-                    errs() <<"\nOperand2: "<< constIntValue<<"\n";
-                    key=constIntValue;
-                  }
-              }
-            } 
-             if (auto *AI = dyn_cast<StoreInst>(instruction)) 
-            {
-              //errs() << "\nStore Instrction:"<<*AI<<I;
+              Value *v=AI->getPointerOperand();
+              errs() << "\nStore Instrction:"<<*v;
+              //instrList.push_back(AI->getPointerOperand());
+              instrList.push_back(&I);
               //errs() << "\nInstruction list size:"<<instrList.size()<<"\n"<<*instrList.front();
               assgnInstrs[key]=instrList;
               key=0;
               instrList.clear();
             }
+            else
+            {
+              instrList.push_back(&I);
+              if (I.getNumOperands()==2)
+              {
+                if (ConstantInt* CI = dyn_cast<ConstantInt>(I.getOperand(1))) 
+                {
+                    if (CI->getBitWidth() <= 32) 
+                    {
+                      int constIntValue = CI->getSExtValue();
+                      errs() <<"\nOperand2: "<< constIntValue<<"\n";
+                      key=constIntValue;
+                    }
+                }
+              }
+            } 
+             
             //errs()<<"\n";
   
           }
@@ -155,8 +169,7 @@ namespace {
     // We don't modify the program, so we preserve all analyses.
     void getAnalysisUsage(AnalysisUsage &AU) const override 
     {
-      //AU.setPreservesAll();      
-      auto *SE = getAnalysisIfAvailable<ScalarEvolutionWrapperPass>();
+      AU.setPreservesAll();      
       //AU.addRequired<LoopStandardAnalysisResults>();
       AU.addRequired<ScalarEvolutionWrapperPass>();
     }
