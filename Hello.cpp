@@ -58,54 +58,47 @@ namespace {
     Hello2() : FunctionPass(ID) {}
 
     bool runOnFunction(Function &F) override {
+
       Module *M=F.getParent();
       ++HelloCounter;
       
-      auto *SE = getAnalysisIfAvailable<ScalarEvolutionWrapperPass>();
-      SE->getSE();
-      //errs() << "Hello: ";
-      //errs().write_escaped(F.getName()) << '\n';
-      //Module *M=F.getParent();
-      //IRBuilder<> IR(M->getContext());
+      auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
       int key;
-      //auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
       std::list<Instruction*> instrList;
-      std::map<int, std::list<Instruction*> > assgnInstrs;
+      std::map<int, StoreInst* > assgnInstrs;
+      //std::map<int, std::list<Value*> > assgnInstrs;
       IRBuilder<> IR(M->getContext());
       for (BasicBlock &BB : F)
       {
-        //errs() << "\nBasic block (name=" << BB.getName() << ") has "<< BB.size() << " instructions.\nPredecessors:\n";
         
         if(BB.getName()=="for.body")
         {
           key=0;
           for (Instruction &I : BB)
           {
-            //errs()<<"\nInstructions:\n"<<I;
             Value *instruction= &I;
 
-            //errs() << SE->getSE()<<"\n";
-
-             //errs() << "\nOpernads number:"<<I.getNumOperands();
             if (auto *AI = dyn_cast<LoadInst>(instruction)) 
             {
               //errs() << "\nLoad Instrction:"<<&AI<<I;
               //instrList.push_back(AI->getPointerOperand()); 
-              instrList.push_back(&I);            
+              //const SCEV *BaseExpr = SE.getSCEV(AI->getPointerOperand());              
+              //errs() << "\nLoad: "<<*BaseExpr;              
+              //errs() << "\nLoad2: "<<*SE.getPointerBase(BaseExpr)<<" "<<*SE.getMinusSCEV(SE.getPointerBase(BaseExpr),SE.getPointerBase(BaseExpr));
+              //instrList.push_back(&I);            
             }
             else if (auto *AI = dyn_cast<StoreInst>(instruction)) 
             {
               Value *v=AI->getPointerOperand();
               errs() << "\nStore Instrction:"<<*v;
-              //instrList.push_back(AI->getPointerOperand());
               instrList.push_back(&I);
-              //errs() << "\nInstruction list size:"<<instrList.size()<<"\n"<<*instrList.front();
-              assgnInstrs[key]=instrList;
+              assgnInstrs[key]=AI;
               key=0;
               instrList.clear();
             }
             else
             {
+              Value *val = dyn_cast<Value>(&I);
               instrList.push_back(&I);
               if (I.getNumOperands()==2)
               {
@@ -129,40 +122,44 @@ namespace {
       }
         //errs()<<"\nMAP: "<<assgnInstrs<<"\n";
         //errs() << "\tKEY\tELEMENT\n";
-        std::map<int, std::list<Instruction*> >::iterator itr;
-        Instruction* prev;
+        std::map<int, StoreInst* >::iterator itr;
+        StoreInst *prev;
+        //Value* prev;
         
         for (itr = assgnInstrs.begin(); itr != assgnInstrs.end(); ++itr) 
         {          
           //errs() << '\t' << itr->first << '\t' << *itr->second.front() << '\n';
           key=itr->first;
-          errs() << "\nkey: " << key <<"\n";
+          errs() << "\nkey: " << key;
           if(key==0)
           {  
-            prev=itr->second.back();
-            errs() << *prev << "\n";
+            prev=itr->second;
+            errs() <<"\n"<<*prev ;
             continue;
           }
           else
           {
             //std::list<Instruction*>::iterator it;
             //errs() << "\n"<<*itr->second.front();
-
-            for(const auto& line : itr->second)
-            {
-              //errs() <<"PREV:" <<*prev <<"\n";
-              errs() << *line <<"\n";
-              //line->removeFromParent();
-              line->moveAfter(prev);
-              prev=line;
-              //break;
-              //errs() << *prev << "\n";
-
-            }
+            //for(const auto& line : itr->second)
+            //{
+            //errs() <<"PREV:" <<*prev <<"\n";
+            errs() << *itr->second <<"\n";
+            const SCEV *BaseExpr = SE.getSCEV(itr->second->getPointerOperand());
+            //line->removeFromParent();
+            //line->moveAfter(prev);
+            errs() << "\nSCEV Minus\n"<<*BaseExpr<<"\n"<<*SE.getPointerBase(BaseExpr)<<"\n"<<*itr->second->getPointerOperand()<<"\n"<<*SE.getMinusSCEV(SE.getPointerBase(BaseExpr),BaseExpr)<<"\n";
+            //prev=line;
+            //break;
+            //errs() << *prev << "\n";
+            //}
           }
+
+          
           
         }
 
+      //F.dump();
       return false;
     }
 
