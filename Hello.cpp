@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ADT/Statistic.h"
+#include "llvm/IR/Type.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
@@ -21,8 +22,11 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Analysis/LoopAnalysisManager.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
+#include "llvm/Analysis/DependenceAnalysis.h"
+
 
 #include <list>
+#include<vector>
 #include <map>
 using namespace llvm;
 
@@ -63,103 +67,52 @@ namespace {
       ++HelloCounter;
       
       auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-      int key;
-      std::list<Instruction*> instrList;
-      std::map<int, StoreInst* > assgnInstrs;
-      //std::map<int, std::list<Value*> > assgnInstrs;
-      IRBuilder<> IR(M->getContext());
-      for (BasicBlock &BB : F)
-      {
-        
+      int cur=0,prev=0,flag=0;
+      std::map<int,Instruction*> storeStuff;
+      Instruction *last;
+
+      for (BasicBlock &BB : F)      
+      {        
         if(BB.getName()=="for.body")
         {
-          key=0;
           for (Instruction &I : BB)
           {
             Value *instruction= &I;
+            if (auto *AI = dyn_cast<StoreInst>(instruction)) 
+            { 
+              const SCEV *s=SE.getSCEV(AI->getPointerOperand());
+              const SCEV *p=SE.getMinusSCEV(s,SE.getPointerBase(s));
 
-            if (auto *AI = dyn_cast<LoadInst>(instruction)) 
-            {
-              //errs() << "\nLoad Instrction:"<<&AI<<I;
-              //instrList.push_back(AI->getPointerOperand()); 
-              //const SCEV *BaseExpr = SE.getSCEV(AI->getPointerOperand());              
-              //errs() << "\nLoad: "<<*BaseExpr;              
-              //errs() << "\nLoad2: "<<*SE.getPointerBase(BaseExpr)<<" "<<*SE.getMinusSCEV(SE.getPointerBase(BaseExpr),SE.getPointerBase(BaseExpr));
-              //instrList.push_back(&I);            
-            }
-            else if (auto *AI = dyn_cast<StoreInst>(instruction)) 
-            {
-              Value *v=AI->getPointerOperand();
-              errs() << "\nStore Instrction:"<<*v;
-              instrList.push_back(&I);
-              assgnInstrs[key]=AI;
-              key=0;
-              instrList.clear();
-            }
-            else
-            {
-              Value *val = dyn_cast<Value>(&I);
-              instrList.push_back(&I);
-              if (I.getNumOperands()==2)
-              {
-                if (ConstantInt* CI = dyn_cast<ConstantInt>(I.getOperand(1))) 
-                {
-                    if (CI->getBitWidth() <= 32) 
-                    {
-                      int constIntValue = CI->getSExtValue();
-                      errs() <<"\nOperand2: "<< constIntValue<<"\n";
-                      key=constIntValue;
-                    }
-                }
-              }
-            } 
-             
-            //errs()<<"\n";
-  
-          }
-            
+              auto *var=cast<SCEVAddRecExpr>(p);
+
+              //cur=p->first addition operand
+
+              if (cur<prev)
+                flag=1;
+
+              storeStuff[cur]=&I;              
+            }             
+            last=&I;
+          }            
         }
       }
-        //errs()<<"\nMAP: "<<assgnInstrs<<"\n";
-        //errs() << "\tKEY\tELEMENT\n";
-        std::map<int, StoreInst* >::iterator itr;
-        StoreInst *prev;
-        //Value* prev;
-        
-        for (itr = assgnInstrs.begin(); itr != assgnInstrs.end(); ++itr) 
-        {          
-          //errs() << '\t' << itr->first << '\t' << *itr->second.front() << '\n';
-          key=itr->first;
-          errs() << "\nkey: " << key;
-          if(key==0)
-          {  
-            prev=itr->second;
-            errs() <<"\n"<<*prev ;
-            continue;
-          }
-          else
-          {
-            //std::list<Instruction*>::iterator it;
-            //errs() << "\n"<<*itr->second.front();
-            //for(const auto& line : itr->second)
-            //{
-            //errs() <<"PREV:" <<*prev <<"\n";
-            errs() << *itr->second <<"\n";
-            const SCEV *BaseExpr = SE.getSCEV(itr->second->getPointerOperand());
-            //line->removeFromParent();
-            //line->moveAfter(prev);
-            errs() << "\nSCEV Minus\n"<<*BaseExpr<<"\n"<<*SE.getPointerBase(BaseExpr)<<"\n"<<*itr->second->getPointerOperand()<<"\n"<<*SE.getMinusSCEV(SE.getPointerBase(BaseExpr),BaseExpr)<<"\n";
-            //prev=line;
-            //break;
-            //errs() << *prev << "\n";
-            //}
-          }
 
-          
-          
+      if(flag==1) //if order of access is not in ascending order
+      {
+        std::map<int, Instruction* >::iterator itr;
+        Instruction *l=last;
+
+        for (itr = storeStuff.begin(); itr != storeStuff.end(); ++itr) 
+        {
+          itr->second->moveAfter(last);
+          last=itr->second;
         }
+        l->moveAfter(last);
+      }
 
-      //F.dump();
+      errs()<<"\n\n";
+      F.dump();
+
       return false;
     }
 
@@ -167,13 +120,8 @@ namespace {
     void getAnalysisUsage(AnalysisUsage &AU) const override 
     {
       AU.setPreservesAll();      
-      //AU.addRequired<LoopStandardAnalysisResults>();
       AU.addRequired<ScalarEvolutionWrapperPass>();
     }
-    /*bool runOnLoop(Loop *L, LPPassManager &LPM) override 
-    {
-      auto *SE = getAnalysisIfAvailable<ScalarEvolutionWrapperPass>();
-    }*/
   };
 }
 
