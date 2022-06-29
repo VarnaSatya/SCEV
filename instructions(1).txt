@@ -40,7 +40,7 @@ opt -mem2reg -loop-simplify -instcombine -instnamer -indvars test.ll -S -o out.l
 
 opt < out.ll -passes='require<scalar-evolution>,invalidate<domtree>,print<scalar-evolution>'
 
-opt -load ${LLVM_HOME}/build/lib/LLVMHello.so -hello test.ll >/dev/null --enable-new-pm=0 
+opt -load ${LLVM_HOME}/build/lib/LLVMHello.so -hello2 test.ll >/dev/null --enable-new-pm=0 
 
 
 
