@@ -11,8 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Type.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
@@ -80,12 +80,13 @@ namespace {
             Value *instruction= &I;
             if (auto *AI = dyn_cast<StoreInst>(instruction)) 
             { 
-              const SCEV *s=SE.getSCEV(AI->getPointerOperand());
-              const SCEV *p=SE.getMinusSCEV(s,SE.getPointerBase(s));
+              auto *s=SE.getSCEV(AI->getPointerOperand());
+              //s->dump();
+              auto *p=SE.getMinusSCEV(s,SE.getPointerBase(s));
+              const SCEVAddRecExpr *minusRes = dyn_cast<SCEVAddRecExpr>(p);
+              //minusRes->dump();
 
-              auto *var=cast<SCEVAddRecExpr>(p);
-
-              //cur=p->first addition operand
+              errs() << "\nInstr "<<minusRes->getOperand(0)<<"\n";
 
               if (cur<prev)
                 flag=1;
@@ -111,7 +112,7 @@ namespace {
       }
 
       errs()<<"\n\n";
-      F.dump();
+      //F.dump();
 
       return false;
     }
