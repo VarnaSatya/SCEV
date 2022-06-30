@@ -70,6 +70,8 @@ namespace {
       int cur=0,prev=0,flag=0;
       std::map<int,Instruction*> storeStuff;
       Instruction *last;
+      
+      
 
       for (BasicBlock &BB : F)      
       {        
@@ -81,15 +83,22 @@ namespace {
             if (auto *AI = dyn_cast<StoreInst>(instruction)) 
             { 
               auto *s=SE.getSCEV(AI->getPointerOperand());
-              //s->dump();
               auto *p=SE.getMinusSCEV(s,SE.getPointerBase(s));
-              const SCEVAddRecExpr *minusRes = dyn_cast<SCEVAddRecExpr>(p);
-              //minusRes->dump();
+              auto *minusRes = dyn_cast<SCEVAddExpr>(p);
 
-              errs() << "\nInstr "<<minusRes->getOperand(0)<<"\n";
+              if(minusRes!=NULL)
+              { 
+                cur=*(SE.getSignedRangeMax(minusRes->getOperand(0))).getRawData();                
+              }
+              else
+              {
+                cur=0;
+              }
 
               if (cur<prev)
                 flag=1;
+
+              prev=cur;
 
               storeStuff[cur]=&I;              
             }             
@@ -112,7 +121,7 @@ namespace {
       }
 
       errs()<<"\n\n";
-      //F.dump();
+      F.dump();
 
       return false;
     }
