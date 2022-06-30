@@ -101,9 +101,9 @@ namespace {
               prev=cur;
 
               storeStuff[cur]=&I;              
-            }             
-            last=&I;
-          }            
+            }     
+          }    
+          last=BB.getTerminator();        
         }
       }
 
